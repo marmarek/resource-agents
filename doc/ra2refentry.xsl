@@ -226,6 +226,9 @@
   <xsl:template match="content" mode="parameters">
     <xsl:if test="@type != '' or @default != ''">
       <xsl:text> (</xsl:text>
+      <xsl:if test="../@unique = 1">
+	<xsl:text>unique, </xsl:text>
+      </xsl:if>
       <xsl:choose>
 	<xsl:when test="../@required = 1">
 	  <xsl:text>required</xsl:text>
@@ -365,21 +368,25 @@
 	<xsl:text> shell:</xsl:text>
       </para>
       <programlisting>
-	<xsl:text>primitive example_</xsl:text>
+	<xsl:text>primitive p_</xsl:text>
 	<xsl:value-of select="@name"/>
 	<xsl:text> </xsl:text>
 	<xsl:value-of select="$class"/>
 	<xsl:text>:</xsl:text>
 	<xsl:value-of select="$provider"/>
 	<xsl:text>:</xsl:text>
-	<xsl:value-of select="@name"/>
-	<xsl:text> \
+	<xsl:choose>
+	  <xsl:when test="parameters/parameter[@required = 1]">
+	    <xsl:value-of select="@name"/>
+	    <xsl:text> \
+  params \
 </xsl:text>
-	<xsl:if test="parameters/parameter[@required = 1]">
-	  <xsl:text>  params \
-</xsl:text>
-	  <xsl:apply-templates select="parameters" mode="example"/>
-	</xsl:if>
+	    <xsl:apply-templates select="parameters" mode="example"/>
+	  </xsl:when>
+	  <xsl:otherwise>
+	  <xsl:value-of select="@name"/><xsl:text> \</xsl:text>
+	  </xsl:otherwise>
+	</xsl:choose>
 	<!-- Insert a suggested allow-migrate meta attribute if the
 	     resource agent supports migration -->
 	<xsl:if test="actions/action/@name = 'migrate_from' or actions/action/@name = 'migrate_to'">
@@ -388,6 +395,18 @@
 	</xsl:if>
 	<xsl:apply-templates select="actions" mode="example"/>
       </programlisting>
+      <!-- Insert a master/slave set definition if the resource
+      agent supports promotion and demotion -->
+      <xsl:if test="actions/action/@name = 'promote' and actions/action/@name = 'demote'">
+	<programlisting>
+	  <xsl:text>ms ms_</xsl:text>
+	  <xsl:value-of select="@name"/>
+	  <xsl:text> p_</xsl:text>
+	  <xsl:value-of select="@name"/>
+	<xsl:text> \
+  meta notify="true" interleave="true"</xsl:text>
+	</programlisting>
+      </xsl:if>
     </refsection>
   </xsl:template>
 
@@ -431,6 +450,9 @@
     <xsl:value-of select="@name"/>
     <xsl:text> </xsl:text>
     <xsl:apply-templates select="@*" mode="example"/>
+    <xsl:if test="following-sibling::action/@name = 'monitor'">
+      <xsl:text>\</xsl:text>
+    </xsl:if>
   </xsl:template>
 
   <xsl:template match="action/@*" mode="example">

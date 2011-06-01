@@ -17,9 +17,10 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 
-MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure DRF/config-h.in \
+MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure DRF/config-h.in \
 			  missing install-sh autoscan.log configure.scan \
-                          DRF/stamp-h.in libtool.m4 ltdl.m4 libltdl.tar
+			  DRF/stamp-h.in libtool.m4 ltdl.m4 libltdl.tar \
+			  compile config.guess config.sub depcomp
 
 SPEC			= $(PACKAGE_NAME).spec
 
@@ -30,10 +31,16 @@ SUBDIRS =
 
 if BUILD_RGMANAGER
 SUBDIRS += rgmanager
+RGMANAGER = without
+else
+RGMANAGER = with
 endif
 
 if BUILD_LINUX_HA
 SUBDIRS	+= include heartbeat tools ldirectord doc
+LINUX_HA = without
+else
+LINUX_HA = with
 endif
 
 EXTRA_DIST		= autogen.sh .version make/release.mk \
@@ -50,6 +57,9 @@ if BUILD_LINUX_HA
 	$(LN_S) ../../lib/heartbeat/ocf-shellfuncs $(DESTDIR)${OCF_RA_DIR_PREFIX}/heartbeat/.ocf-shellfuncs
 endif
 if BUILD_RGMANAGER
+if BUILD_LINUX_HA
+	$(LN_S) ${CLUSTERDATA} $(DESTDIR)${OCF_RA_DIR_PREFIX}/redhat
+endif
 	$(INSTALL) -d $(DESTDIR)/$(LOGDIR)
 endif
 
@@ -72,7 +82,7 @@ gen_start_date = 2000-01-01
 .PHONY: gen-ChangeLog
 gen-ChangeLog:
 	if test -d .git; then 						\
-		$(top_srcdir)/make/gitlog-to-changelog			\
+		LC_ALL=C $(top_srcdir)/make/gitlog-to-changelog		\
 			--since=$(gen_start_date) > $(distdir)/cl-t;	\
 		rm -f $(distdir)/ChangeLog.devel;			\
 		mv $(distdir)/cl-t $(distdir)/ChangeLog.devel;		\
@@ -81,7 +91,7 @@ gen-ChangeLog:
 ## make rpm/srpm section.
 $(SPEC): $(SPEC).in
 	rm -f $@-t $@
-	LC_ALL=C date="$(shell date "+%a %b %d %Y")" && \
+	date="$(shell LC_ALL=C date "+%a %b %d %Y")" && \
 	if [ -f .tarball-version ]; then \
 		gitver="$(shell cat .tarball-version)" && \
 		rpmver=$$gitver && \
@@ -105,6 +115,8 @@ $(SPEC): $(SPEC).in
 			-e "s#%glo.*numcomm.*##g" \
 			-e "s#@dirty@#$$dirty#g" \
 			-e "s#@date@#$$date#g" \
+			-e "s#@rgmanager@#$(RGMANAGER)#g" \
+			-e "s#@linux-ha@#$(LINUX_HA)#g" \
 		$< > $@-t; \
 	else \
 		sed \
@@ -113,6 +125,8 @@ $(SPEC): $(SPEC).in
 			-e "s#@numcomm@#$$numcomm#g" \
 			-e "s#@dirty@#$$dirty#g" \
 			-e "s#@date@#$$date#g" \
+			-e "s#@rgmanager@#$(RGMANAGER)#g" \
+			-e "s#@linux-ha@#$(LINUX_HA)#g" \
 		$< > $@-t; \
 	fi; \
 	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
@@ -135,8 +149,6 @@ srpm: clean
 rpm: clean
 	$(MAKE) $(SPEC) $(TARFILES)
 	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
-
-all-local: $(SPEC)
 
 clean-generic:
 	rm -rf $(SPEC) $(TARFILES)

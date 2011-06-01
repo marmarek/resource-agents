@@ -29,9 +29,12 @@ ocftcfgs_DATA      =  apache  	\
 			 IPsrcaddr  	\
 			 MailTo		\
 		       	 mysql		\
+		       	 pgsql		\
 		       	 db2		\
 		       	 nfsserver	\
 		       	 portblock	\
+		       	 iscsi	\
+		       	 postfix	\
 			 SendArp
 
 ocftdir			= $(datadir)/$(PACKAGE_NAME)/ocft
